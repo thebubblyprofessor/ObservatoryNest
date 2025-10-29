@@ -1,1 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><!-- PAGE_TITLE --></title>
+  <style>
+    :root{
+      --bg:#0b0c10;        /* page background */
+      --fg:#eaf0f6;        /* main text */
+      --muted:#9fb3c8;     /* secondary text */
+      --accent:#4fd1c5;    /* button + highlights (change per sport if you want) */
+      --card:#11131a;      /* card background */
+      --border:#1e2230;    /* card border */
+    }
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:400 16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    .wrap{max-width:920px;margin:0 auto;padding:28px 16px}
+    h1{font-weight:800;letter-spacing:.2px;margin:0 0 6px;font-size:clamp(22px,4vw,28px)}
+    p.sub{margin:0 0 18px;color:var(--muted)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 18px}
+    .controls .pill{border:1px solid var(--border);background:var(--card);color:var(--fg);padding:8px 12px;border-radius:999px;font-size:14px;cursor:pointer}
+    .list{display:grid;grid-template-columns:1fr;gap:12px}
+    .item{border:1px solid var(--border);background:var(--card);border-radius:16px;padding:14px 14px}
+    .top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+    .date{font-weight:700}
+    .time{color:var(--muted)}
+    .summary{font-weight:600;margin-top:4px}
+    .loc{color:var(--muted);font-size:14px;margin-top:2px}
+    .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .tag{font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted)}
+    .empty{color:var(--muted);padding:24px 0}
+    a.btn{display:inline-block;margin-top:14px;color:#0b0c10;background:var(--accent);padding:10px 14px;border-radius:12px;text-decoration:none;font-weight:700}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- EDIT THESE TWO LINES ONLY (title & subtitle) ---------------------- -->
+    <h1 id="page-title">Hockey — Next 7 Days</h1>
+    <p class="sub" id="page-sub">Men’s, Women’s & Field Hockey — auto‑updated.</p>
+    <!-- ------------------------------------------------------------------ -->
+
+    <div class="controls">
+      <button class="pill" data-days="7">Next 7 Days</button>
+      <button class="pill" data-days="14">Next 14 Days</button>
+      <button class="pill" data-days="30">Next 30 Days</button>
+    </div>
+
+    <div id="list" class="list" role="list"></div>
+
+    <a id="calendarLink" class="btn" href="#" target="_blank" rel="noreferrer">Full Athletics Calendar →</a>
+
+    <footer>
+      Tip: You only need to paste your ICS calendar links in the <b>ICS_SOURCES</b> array below. Timezone: America/New_York.
+    </footer>
+  </div>
+
+  <script>
+  /**
+   * ================== QUICK SETUP (copy/paste) ==================
+   * 1) Replace the example URLs in ICS_SOURCES with your calendars.
+   *    - You can list 1..N calendars (Men’s, Women’s, Field, etc.)
+   *    - Use clean links (no trailing &_= cache busters)
+   * 2) Optionally change PAGE_TITLE, PAGE_SUBTITLE, and FULL_CAL_URL.
+   * 3) Save as sports/<your-sport>.html
+   * 4) Embed this page URL anywhere (Canva Pages → Embed).
+   * =============================================================
+   */
+
+  // ---- EDITABLE CONFIG ----------------------------------------------------
+  const PAGE_TITLE   = 'Hockey — Next 7 Days';
+  const PAGE_SUBTITLE= "Men’s, Women’s & Field Hockey — auto‑updated.";
+  const FULL_CAL_URL = 'https://keeneowls.com/calendar.aspx';
+  const TZ           = 'America/New_York';
+
+  // http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=29&_=cmhccq92s0001359fp883ligq
+  // http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=30&_=cmhccxuyy000135a0scra08le
+ // http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=3&_=cmhccumca000135a0js1rgnaf
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=1&_=cmhccm6ka000135a0nrmyvwhz
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=6&_=cmhccnfup000135a0vci1tgwu
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=27&_=cmhccpseg000135a1pin09o6f
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=19&_=cmhccqyoa000135a0ss1n4vvr
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=7&_=cmhccrkr5000135a09gyesd43
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=8&_=cmhccryh0000135a1h3nod5a6
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=9&_=cmhccsd59000135a1pmg2r99o
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=12&_=cmhccjo0u0001359ujfdek20h
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=11&_=cmhcd2rho0001359fpxugkkqr
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=13&_=cmhccv3w4000135a0s2meufha
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=28&_=cmhccvk12000135a0jqo4u8nf
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=21&_=cmhcd1zp0000135a0mlqbniv0
+// http://keeneowls.com/calendar.ashx/calendar.ics?sport_id=18&_=cmhcd2efn0001359h9x0aujqy
+  // document.documentElement.style.setProperty('--accent', '#f59e0b'); // e.g., orange for baseball
+
+  // ---- FETCH HELPERS ------------------------------------------------------
+  const PROXIES = [
+    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url => `https://r.jina.ai/http://` + url.replace(/^https?:\/\//,'')
+  ];
+
+  function setHeader(){
+    document.title = PAGE_TITLE;
+    document.getElementById('page-title').textContent = PAGE_TITLE;
+    document.getElementById('page-sub').textContent = PAGE_SUBTITLE;
+    document.getElementById('calendarLink').href = FULL_CAL_URL;
+  }
+
+  function parseICS(text){
+    const unfolded = text.replace(/\r?\n[ \t]/g, '');
+    const lines = unfolded.split(/\r?\n/);
+    const events = [];
+    let cur = null;
+    for(const raw of lines){
+      const line = raw.trim();
+      if(line === 'BEGIN:VEVENT') cur = {};
+      else if(line === 'END:VEVENT'){ if(cur) events.push(cur); cur = null; }
+      else if(cur){
+        const idx = line.indexOf(':');
+        if(idx === -1) continue;
+        const keyPart = line.slice(0, idx);
+        const val = line.slice(idx+1);
+        const key = keyPart.split(';')[0].toUpperCase();
+        cur[key] = val;
+      }
+    }
+    return events;
+  }
+
+  function parseDate(v){
+    if(!v) return null;
+    if(/^[0-9]{8}T[0-9]{6}Z$/.test(v)) return new Date(v);
+    if(/^[0-9]{8}T[0-9]{6}$/.test(v)){
+      const y = +v.slice(0,4), m = +v.slice(4,6)-1, d = +v.slice(6,8), hh = +v.slice(9,11), mm = +v.slice(11,13);
+      return new Date(Date.UTC(y,m,d,hh,mm));
+    }
+    if(/^[0-9]{8}$/.test(v)){
+      const y = +v.slice(0,4), m = +v.slice(4,6)-1, d = +v.slice(6,8);
+      return new Date(Date.UTC(y,m,d));
+    }
+    return new Date(v);
+  }
+
+  function formatDateNY(d){
+    try{
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: TZ, month:'short', day:'numeric', weekday:'short', hour:'numeric', minute:'2-digit'
+      }).format(d);
+    }catch{ return d.toLocaleString(); }
+  }
+
+  function withinDays(d, days){
+    const now = new Date();
+    const end = new Date();
+    end.setDate(end.getDate()+days);
+    return d >= now && d <= end;
+  }
+
+  async function fetchWithProxies(url){
+    const chain = [u=>u, ...PROXIES];
+    for(const fn of chain){
+      const target = fn(url);
+      try{
+        const resp = await fetch(target, { cache:'no-store' });
+        if(!resp.ok) throw new Error('HTTP '+resp.status);
+        const text = await resp.text();
+        if(text && /BEGIN:VCALENDAR/.test(text)) return text;
+      }catch(e){ /* try next */ }
+    }
+    throw new Error('Unable to fetch ICS (CORS or network).');
+  }
+
+  async function load(days=7){
+    const container = document.getElementById('list');
+    container.innerHTML = '<div class="empty">Loading…</div>';
+
+    try{
+      const all = [];
+      for(const src of ICS_SOURCES){
+        if(!src || !/\.ics(\?|$)/i.test(src)) continue; // skip empty / non-ics placeholders
+        const txt = await fetchWithProxies(src);
+        const evs = parseICS(txt).map(e=>({
+          summary: e.SUMMARY || 'Untitled',
+          location: e.LOCATION || '',
+          description: e.DESCRIPTION || '',
+          url: (e['URL'] || e['X-ALT-DESC'] || '').trim(),
+          start: parseDate(e.DTSTART),
+          end: parseDate(e.DTEND),
+          raw: e
+        }));
+        all.push(...evs);
+      }
+
+      const filtered = all.filter(e=> e.start && withinDays(e.start, days));
+      filtered.sort((a,b)=>a.start - b.start);
+
+      if(filtered.length === 0){
+        container.innerHTML = '<div class="empty">No upcoming events in the selected window.</div>';
+      }else{
+        container.innerHTML = '';
+        for(const ev of filtered){
+          const date = formatDateNY(ev.start);
+          const time = ev.end ? `${ev.start.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit', timeZone:TZ})} – ${ev.end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit', timeZone:TZ})}` : ev.start.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit', timeZone:TZ});
+          const tags = [];
+          if(/women/i.test(ev.summary)) tags.push("Women’s");
+          if(/men/i.test(ev.summary)) tags.push("Men’s");
+          if(/field/i.test(ev.summary)) tags.push("Field");
+          if(/ vs | vs\. /i.test(ev.summary)) tags.push('Home');
+          else if(/ @ | at /i.test(ev.summary)) tags.push('Away');
+
+          const card = document.createElement('div');
+          card.className = 'item';
+          card.innerHTML = `
+            <div class="top">
+              <div class="date">${date}</div>
+              <div class="time">${time}</div>
+            </div>
+            <div class="summary">${escapeHtml(ev.summary)}</div>
+            ${ev.location ? `<div class="loc">📍 ${escapeHtml(ev.location)}</div>` : ''}
+            <div class="meta">${tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+          `;
+          container.appendChild(card);
+        }
+      }
+    }catch(err){
+      container.innerHTML = `<div class="empty">Error loading schedule. ${escapeHtml(err.message || '')}</div>`;
+    }
+  }
+
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+  }
+
+  // Initialize
+  setHeader();
+  let currentDays = 7;
+  load(currentDays);
+  document.querySelectorAll('.pill').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const d = parseInt(btn.getAttribute('data-days'),10)||7;
+      currentDays = d;
+      load(currentDays);
+    });
+  });
+  </script>
+</body>
+</html>
 
